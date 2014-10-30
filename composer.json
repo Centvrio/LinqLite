@@ -1,6 +1,7 @@
 {
     "name": "centvrio/linqlite",
     "description": "Linq Lite for PHP",
+    "version":"0.1.4.1-dev",
     "license": "MIT",
     "authors": [
         {
@@ -14,12 +15,6 @@
     "autoload": {
         "psr-4": {
             "": "vendor/centvrio/linqlite/"
-        }
-    },
-    "extra": {
-        "branch-alias": {
-            "dev-master":"0.1.4.1-dev",
-            "dev-develop":"0.1.4.1-dev"
         }
     }
 }
