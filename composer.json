@@ -1,8 +1,10 @@
 {
     "name": "centvrio/linqlite",
     "description": "Linq Lite for PHP",
-    "version":"0.1.4.1-dev",
+    "version": "1.4.1-dev",
     "license": "MIT",
+    "type": "library",
+    "minimum-stability": "dev",
     "authors": [
         {
             "name": "Sergey Sytnic",

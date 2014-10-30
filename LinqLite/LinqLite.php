@@ -10,7 +10,7 @@ use LinqLite\Comparer\ComparerParam;
 
 /**
  * Class Linq
- * @version 0.1.4.1
+ * @version 1.4.1
  * @package Linq
  * @property-read integer $rank
  */
