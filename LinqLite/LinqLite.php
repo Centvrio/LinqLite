@@ -26,15 +26,15 @@ class LinqLite
     protected $predicates = [];
 
     /**
-     * Set array
+     * Set source array
      *
-     * @param array $array
+     * @param array $source
      * @return LinqLite
      */
-    public static function from(array $array)
+    public static function from(array $source)
     {
         $instance = new self();
-        $instance->inputArray = $array;
+        $instance->inputArray = $source;
         return $instance;
     }
 
