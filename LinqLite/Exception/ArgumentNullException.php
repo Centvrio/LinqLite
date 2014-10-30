@@ -3,6 +3,7 @@ namespace LinqLite\Exception;
 
 /**
  * Class ArgumentNullException
+ *
  * @package LinqLite
  * @subpackage Exception
  */

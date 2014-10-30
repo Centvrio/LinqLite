@@ -3,6 +3,7 @@ namespace LinqLite\Exception;
 
 /**
  * Class IndexOutOfRangeException
+ *
  * @package Linq
  * @subpackage Exception
  */

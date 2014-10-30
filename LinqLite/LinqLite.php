@@ -10,25 +10,31 @@ use LinqLite\Comparer\ComparerParam;
 
 /**
  * Class Linq
- * @version 1.4.1
+ *
+ * @version 1.4.2
  * @package Linq
- * @property-read integer $rank
+ * @property-read integer $rank Returns array rank
  */
 class LinqLite
 {
     /**
      * @var array
+     * @access protected
+     * Inner source array
      */
     protected $inputArray = [];
     /**
      * @var \Closure[]
+     * @access protected
+     * Inner predicates collection
      */
     protected $predicates = [];
 
     /**
      * Set source array
      *
-     * @param array $source
+     * @param array $source Source array
+     *
      * @return LinqLite
      */
     public static function from(array $source)
@@ -41,13 +47,14 @@ class LinqLite
     /**
      * Filters a array of values based on a predicate.
      *
-     * @param \Closure $callback
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
      * @return LinqLite
      */
-    public function where(\Closure $callback)
+    public function where(\Closure $predicate)
     {
-        if (!is_null($callback)) {
-            $this->predicates[] = $callback;
+        if (!is_null($predicate)) {
+            $this->predicates[] = $predicate;
         }
         return $this;
     }
@@ -55,7 +62,8 @@ class LinqLite
     /**
      * Projects each element of a array into a new form.
      *
-     * @param \Closure $selector
+     * @param \Closure $selector A transform function to apply to each element.
+     *
      * @return LinqLite
      */
     public function select(\Closure $selector)
@@ -69,9 +77,12 @@ class LinqLite
     /**
      * Returns the first element of an array.
      *
-     * @param \Closure $predicate
-     * @return mixed
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
      * @throws InvalidOperationException
+     * The source array is empty.
+     *
+     * @return mixed
      */
     public function first(\Closure $predicate = null)
     {
@@ -86,7 +97,7 @@ class LinqLite
             if (!is_null($predicate)) {
                 throw new InvalidOperationException();
             }
-            throw new InvalidOperationException("The source array is empty.");
+            throw new InvalidOperationException('The source array is empty.');
         }
         return $item;
     }
@@ -94,9 +105,12 @@ class LinqLite
     /**
      * Returns the last element of an array.
      *
-     * @param \Closure $predicate
-     * @return mixed
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
      * @throws InvalidOperationException
+     * The source array is empty.
+     *
+     * @return mixed
      */
     public function last(\Closure $predicate = null)
     {
@@ -111,7 +125,7 @@ class LinqLite
             if (!is_null($predicate)) {
                 throw new InvalidOperationException();
             }
-            throw new InvalidOperationException("The source array is empty.");
+            throw new InvalidOperationException('The source array is empty.');
         }
         return $item;
     }
@@ -119,9 +133,13 @@ class LinqLite
     /**
      * Returns a single, specific element of an array.
      *
-     * @param \Closure $predicate
-     * @return mixed
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
      * @throws InvalidOperationException
+     * More than one element satisfies the condition.
+     * The input array contains more than one element.
+     *
+     * @return mixed
      */
     public function single(\Closure $predicate = null)
     {
@@ -134,22 +152,23 @@ class LinqLite
                 return array_values($items)[0];
             } else {
                 if (!is_null($predicate)) {
-                    throw new InvalidOperationException("More than one element satisfies the condition.");
+                    throw new InvalidOperationException('More than one element satisfies the condition.');
                 }
-                throw new InvalidOperationException("The input array contains more than one element.");
+                throw new InvalidOperationException('The input array contains more than one element.');
             }
         } else {
             if (!is_null($predicate)) {
                 throw new InvalidOperationException();
             }
-            throw new InvalidOperationException("The source array is empty.");
+            throw new InvalidOperationException('The source array is empty.');
         }
     }
 
     /**
      * Filters the elements of an array on a specified type.
      *
-     * @param string $type
+     * @param string $type Type string name
+     *
      * @return LinqLite
      */
     public function ofType($type)
@@ -163,10 +182,14 @@ class LinqLite
     /**
      * Returns the element at a specified index in an array.
      *
-     * @param integer $index
-     * @return mixed
+     * @param integer $index The zero-based index of the element to retrieve.
+     *
      * @throws IndexOutOfRangeException
+     * Index is less than 0 or greater than or equal to the number of elements in array.
      * @throws InvalidOperationException
+     * The source array is empty.
+     *
+     * @return mixed
      */
     public function elementAt($index)
     {
@@ -178,7 +201,7 @@ class LinqLite
             }
             $result = $array[$index];
         } else {
-            throw new InvalidOperationException("The source array is empty.");
+            throw new InvalidOperationException('The source array is empty.');
         }
         return $result;
     }
@@ -186,9 +209,10 @@ class LinqLite
     /**
      * Determines whether an array contains a specified element by using a specified IComparer.
      *
-     * @param ComparerParam|mixed $value
-     * @param IComparer $comparer
-     * @return bool
+     * @param ComparerParam|mixed $value    The value to locate in the sequence.
+     * @param IComparer           $comparer An equality comparer to compare values.
+     *
+     * @return boolean
      */
     public function contains($value, IComparer $comparer = null)
     {
@@ -213,8 +237,9 @@ class LinqLite
     /**
      * Determines whether any element of an array exists or satisfies a condition.
      *
-     * @param \Closure $predicate
-     * @return bool
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @return boolean
      */
     public function any(\Closure $predicate = null)
     {
@@ -236,9 +261,12 @@ class LinqLite
     /**
      * Determines whether all elements of an array satisfy a condition.
      *
-     * @param \Closure $predicate
-     * @return bool
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
      * @throws ArgumentNullException
+     * Predicate is null.
+     *
+     * @return boolean
      */
     public function all(\Closure $predicate)
     {
@@ -260,7 +288,7 @@ class LinqLite
     }
 
     /**
-     * Return result array
+     * Returns an array of processed
      *
      * @return array
      */
@@ -272,9 +300,10 @@ class LinqLite
     /**
      * Determines whether two arrays are equal by comparing their elements by using a specified IComparer.
      *
-     * @param array $second
-     * @param IComparer $comparer
-     * @return bool
+     * @param array     $second   An array to compare to the source array.
+     * @param IComparer $comparer An equality comparer to compare values.
+     *
+     * @return boolean
      */
     public function sequenceEqual(array $second, IComparer $comparer = null)
     {
@@ -300,7 +329,10 @@ class LinqLite
     }
 
     /**
-     * @param \Closure $keySelector
+     * Creates new array from source array according to a specified key selector function.
+     *
+     * @param \Closure $keySelector A function to extract a key from each element.
+     *
      * @return array
      */
     public function toLookup(\Closure $keySelector)
@@ -321,8 +353,9 @@ class LinqLite
     /**
      * Groups the elements of an array according to a specified key selector function and projects the elements for each group by using a specified function.
      *
-     * @param \Closure $keySelector
-     * @param \Closure $selector
+     * @param \Closure $keySelector A function to extract the key for each element.
+     * @param \Closure $selector    A transform function to apply to each element.
+     *
      * @return array
      */
     public function groupBy(\Closure $keySelector, \Closure $selector)
@@ -343,10 +376,11 @@ class LinqLite
     /**
      * Correlates the elements of two arrays based on key equality, and groups the results.
      *
-     * @param array $inner
-     * @param \Closure $outerSelector
-     * @param \Closure $innerSelector
-     * @param \Closure $resultSelector
+     * @param array    $inner          The sequence to join to the source array.
+     * @param \Closure $outerSelector  A function to extract the join key from each element of the source array.
+     * @param \Closure $innerSelector  A function to extract the join key from each element of the second array.
+     * @param \Closure $resultSelector A transform function to apply to each element.
+     *
      * @return array
      */
     public function groupJoin(array $inner, \Closure $outerSelector, \Closure $innerSelector, \Closure $resultSelector)
@@ -374,10 +408,13 @@ class LinqLite
     /**
      * Merges two arrays by using the specified predicate function.
      *
-     * @param array $second
-     * @param callable $resultSelector
-     * @return array
+     * @param array    $second         The second array to merge.
+     * @param \Closure $resultSelector A function that specifies how to merge the elements from the two arrays.
+     *
      * @throws ArgumentNullException
+     * Second is null.
+     *
+     * @return array
      */
     public function zip(array $second, \Closure $resultSelector)
     {
@@ -391,11 +428,11 @@ class LinqLite
         $countFirst = count($first);
         $countSecond = count($second);
         $count = $countFirst != $countSecond ? ($countFirst < $countSecond ? $countFirst : $countSecond) : $countFirst;
-        if ($count>0) {
-            for($i=0;$i<$count;$i++) {
-                $firstItem=current($first);
-                $secondItem=current($second);
-                $result[]=$resultSelector($firstItem,$secondItem);
+        if ($count > 0) {
+            for ($i = 0; $i < $count; $i++) {
+                $firstItem = current($first);
+                $secondItem = current($second);
+                $result[] = $resultSelector($firstItem, $secondItem);
                 next($first);
                 next($second);
             }
@@ -404,6 +441,8 @@ class LinqLite
     }
 
     /**
+     * Calculate all predicates
+     *
      * @return array
      */
     private function predicateCalculate()
@@ -433,9 +472,12 @@ class LinqLite
     }
 
     /**
-     * @param mixed $value
-     * @param string $type
-     * @return bool
+     * Validate variable type
+     *
+     * @param mixed  $value Source variable
+     * @param string $type  String type name
+     *
+     * @return boolean
      */
     private function validateType($value, $type)
     {
@@ -447,8 +489,11 @@ class LinqLite
     }
 
     /**
-     * @param array $array
-     * @param integer $rank
+     * Calculate array rank
+     *
+     * @param array   $array Source rank
+     * @param integer $rank  Rank
+     *
      * @return float|int
      */
     private function recursiveRank(array $array, $rank = 0)
@@ -465,9 +510,11 @@ class LinqLite
     }
 
     /**
+     * Property rank getter
+     *
      * @return integer
      */
-    private function getRank()
+    protected function getRank()
     {
         $array = $this->predicateCalculate();
         if (count($array) > 0) {
@@ -477,6 +524,16 @@ class LinqLite
         }
     }
 
+    /**
+     * Magical method
+     *
+     * @param string $name Property name
+     *
+     * @throws \Exception
+     * Undefined property referenced.
+     *
+     * @return mixed
+     */
     public function __get($name)
     {
         $methodName = 'get' . $name;

@@ -3,6 +3,7 @@ namespace LinqLite\Exception;
 
 /**
  * Class InvalidOperationException
+ *
  * @package Linq
  * @subpackage Exception
  */
