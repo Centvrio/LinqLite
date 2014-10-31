@@ -502,20 +502,19 @@ class LinqLite
         $result = false;
         $first = $this->predicateCalculate();
         if ((count($first) == count($second)) && count($first) > 0 && count($second) > 0) {
-            if (!is_null($comparer)) {
-                reset($first);
-                reset($second);
-                $equals = true;
-                foreach ($first as $xKey => $x) {
-                    $y = current($second);
-                    $yKey = key($second);
-                    $equals = $equals && $comparer->equals(new ComparerParam($x, $xKey), new ComparerParam($y, $yKey));
-                    next($second);
-                }
-                $result = $equals;
-            } else {
-                $result = ($first === $second);
+            if (is_null($comparer)) {
+                $comparer = new DefaultComparer();
             }
+            reset($first);
+            reset($second);
+            $equals = true;
+            foreach ($first as $xKey => $x) {
+                $y = current($second);
+                $yKey = key($second);
+                $equals = $equals && $comparer->equals(new ComparerParam($x, $xKey), new ComparerParam($y, $yKey));
+                next($second);
+            }
+            $result = $equals;
         }
         return $result;
     }
@@ -603,7 +602,8 @@ class LinqLite
                 $rank = $this->recursiveRank($item, $rank);
             }
         }
-        $counter += ($rank / count($array));
+        $count = count($array) > 0 ? count($array) : 1;
+        $counter += ($rank / $count);
         return $counter;
     }
 
