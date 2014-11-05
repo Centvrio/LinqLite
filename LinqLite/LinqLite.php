@@ -544,7 +544,7 @@ class LinqLite
      *
      * @return mixed|null
      */
-    public function Aggregate(\Closure $func) {
+    public function aggregate(\Closure $func) {
         $result=null;
         $array=$this->predicateCalculate();
         if (count($array)>0) {
@@ -562,7 +562,7 @@ class LinqLite
      *
      * @return float|null
      */
-    public function Average() {
+    public function average() {
         $result=null;
         $array=$this->predicateCalculate();
         if (count($array)>0) {
