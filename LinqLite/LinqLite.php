@@ -11,7 +11,7 @@ use LinqLite\Comparer\ComparerParam;
 /**
  * Class Linq
  *
- * @version 1.4.3
+ * @version 1.4.4
  * @package Linq
  * @property-read integer $rank Returns array rank
  */
@@ -531,6 +531,44 @@ class LinqLite
     public function toArray()
     {
         return $this->predicateCalculate();
+    }
+
+    // endregion
+
+    // region Aggregation
+
+    /**
+     * Applies an accumulator function over an array.
+     *
+     * @param \Closure $func An accumulator function to be invoked on each element.
+     *
+     * @return mixed|null
+     */
+    public function Aggregate(\Closure $func) {
+        $result=null;
+        $array=$this->predicateCalculate();
+        if (count($array)>0) {
+            $accumulate=current($array);
+            while(next($array)) {
+                $accumulate=$func($accumulate,current($array));
+            }
+            $result=$accumulate;
+        }
+        return $result;
+    }
+
+    /**
+     * Computes the average of an array.
+     *
+     * @return float|null
+     */
+    public function Average() {
+        $result=null;
+        $array=$this->predicateCalculate();
+        if (count($array)>0) {
+            $result=array_sum($array)/count($array);
+        }
+        return $result;
     }
 
     // endregion
