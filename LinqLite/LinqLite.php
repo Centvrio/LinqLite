@@ -11,7 +11,7 @@ use LinqLite\Comparer\ComparerParam;
 /**
  * Class Linq
  *
- * @version 1.4.4
+ * @version 1.4.5
  * @package Linq
  * @property-read integer $rank Returns array rank
  */
@@ -97,6 +97,38 @@ class LinqLite
 
     // endregion
 
+    // region Joining
+
+    /**
+     * Correlates the elements of two arrays based on matching keys.
+     *
+     * @param array $inner
+     *
+     * @param \Closure $outerSelector A function to extract the join key from each element of the source array.
+     * @param \Closure $innerSelector A function to extract the join key from each element of the second array.
+     * @param \Closure $resultSelector A transform function to apply to each element.
+     *
+     * @return array
+     */
+    public function join(array $inner, \Closure $outerSelector, \Closure $innerSelector, \Closure $resultSelector)
+    {
+        $result = [];
+        $outer = $this->predicateCalculate(true);
+        if (count($outer) > 0 && count($inner) > 0) {
+            foreach ($outer as $outerKey => $outerItem) {
+                $resultKey = $outerSelector($outerItem, $outerKey);
+                foreach ($inner as $innerKey => $innerItem) {
+                    if ($resultKey == $innerSelector($innerItem, $innerKey)) {
+                        $result[] = $resultSelector($outerItem, $innerItem);
+                    }
+                }
+            }
+        }
+        return $result;
+    }
+
+    // endregion
+
     // region Grouping
 
     /**
@@ -108,7 +140,7 @@ class LinqLite
      */
     public function toLookup(\Closure $keySelector)
     {
-        $items = $this->predicateCalculate();
+        $items = $this->predicateCalculate(true);
         $result = $items;
         if (!is_null($keySelector) && count($items) > 0) {
             $lookup = [];
@@ -131,7 +163,7 @@ class LinqLite
      */
     public function groupBy(\Closure $keySelector, \Closure $selector)
     {
-        $items = $this->predicateCalculate();
+        $items = $this->predicateCalculate(true);
         $result = $items;
         if (!is_null($keySelector) && !is_null($selector) && count($items) > 0) {
             $grouped = [];
@@ -157,20 +189,17 @@ class LinqLite
     public function groupJoin(array $inner, \Closure $outerSelector, \Closure $innerSelector, \Closure $resultSelector)
     {
         $result = [];
-        $outer = $this->predicateCalculate();
-        if (count($outer) > 0) {
+        $outer = $this->predicateCalculate(true);
+        if (count($outer) > 0 && count($inner) > 0) {
             foreach ($outer as $outerKey => $outerItem) {
                 $resultKey = $outerSelector($outerItem, $outerKey);
-                if (count($inner) > 0) {
-                    foreach ($inner as $innerKey => $innerItem) {
-                        if ($resultKey == $innerSelector($innerItem, $innerKey)) {
-                            $result[$resultKey][] = $resultSelector($innerItem, $innerKey);
-                        }
+                $innerTemp = [];
+                foreach ($inner as $innerKey => $innerItem) {
+                    if ($resultKey == $innerSelector($innerItem, $innerKey)) {
+                        $innerTemp[$innerKey] = $innerItem;
                     }
                 }
-                if (empty($result[$resultKey])) {
-                    $result[$resultKey] = [];
-                }
+                $result[$resultKey] = $resultSelector($outerItem, $innerTemp);
             }
         }
         return $result;
@@ -193,7 +222,7 @@ class LinqLite
             throw new ArgumentNullException();
         }
         $result = [];
-        $first = $this->predicateCalculate();
+        $first = $this->predicateCalculate(true);
         reset($first);
         reset($second);
         $countFirst = count($first);
@@ -533,6 +562,16 @@ class LinqLite
         return $this->predicateCalculate();
     }
 
+    /**
+     * Returns an associative array of processed
+     *
+     * @return array
+     */
+    public function toList()
+    {
+        return $this->predicateCalculate(true);
+    }
+
     // endregion
 
     // region Aggregation
@@ -544,15 +583,16 @@ class LinqLite
      *
      * @return mixed|null
      */
-    public function aggregate(\Closure $func) {
-        $result=null;
-        $array=$this->predicateCalculate();
-        if (count($array)>0) {
-            $accumulate=current($array);
-            while(next($array)) {
-                $accumulate=$func($accumulate,current($array));
+    public function aggregate(\Closure $func)
+    {
+        $result = null;
+        $array = $this->predicateCalculate();
+        if (count($array) > 0) {
+            $accumulate = current($array);
+            while (next($array)) {
+                $accumulate = $func($accumulate, current($array));
             }
-            $result=$accumulate;
+            $result = $accumulate;
         }
         return $result;
     }
@@ -562,11 +602,12 @@ class LinqLite
      *
      * @return float|null
      */
-    public function average() {
-        $result=null;
-        $array=$this->predicateCalculate();
-        if (count($array)>0) {
-            $result=array_sum($array)/count($array);
+    public function average()
+    {
+        $result = null;
+        $array = $this->predicateCalculate();
+        if (count($array) > 0) {
+            $result = array_sum($array) / count($array);
         }
         return $result;
     }
@@ -578,9 +619,11 @@ class LinqLite
     /**
      * Calculate all predicates
      *
+     * @param boolean $isList Is true create associative array
+     *
      * @return array
      */
-    private function predicateCalculate()
+    private function predicateCalculate($isList = false)
     {
         $result = [];
         if (count($this->inputArray) > 0) {
@@ -599,7 +642,11 @@ class LinqLite
                     }
                 }
                 if ($predicate) {
-                    $result[$key] = $item;
+                    if ($isList) {
+                        $result[$key] = $item;
+                    } else {
+                        $result[] = $item;
+                    }
                 }
             }
         }
