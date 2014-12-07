@@ -11,7 +11,7 @@ use LinqLite\Comparer\ComparerParam;
 /**
  * Class Linq
  *
- * @version 1.4.5
+ * @version 1.4.6
  * @package Linq
  * @property-read integer $rank Returns array rank
  */
@@ -119,7 +119,7 @@ class LinqLite
                 $resultKey = $outerSelector($outerItem, $outerKey);
                 foreach ($inner as $innerKey => $innerItem) {
                     if ($resultKey == $innerSelector($innerItem, $innerKey)) {
-                        $result[] = $resultSelector($outerItem, $innerItem);
+                        $result[][$resultKey] = $resultSelector($outerItem, $innerItem);
                     }
                 }
             }
