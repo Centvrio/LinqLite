@@ -6,6 +6,9 @@ use LinqLite\Expression\LinqExpression;
 
 final class LinqIterator implements \Iterator
 {
+    /**
+     * @var array
+     */
     private $storage = [];
     /**
      * @var LinqExpression[]
@@ -18,26 +21,35 @@ final class LinqIterator implements \Iterator
         $this->expressions = $expressions;
     }
 
+    /**
+     * @return LinqIteratorResult
+     */
     public function current()
     {
         $key = key($this->storage);
         $value = current($this->storage);
-        $result = new \StdClass();
-        $result->skipped = false;
-        $result->sequences = 0;
+        $result = new LinqIteratorResult();
         foreach ($this->expressions as $expression) {
             $closure = $expression->closure;
             $exprResult = $closure($value, $key);
-            if (($expression->return == LinqExpression::FILTERING || $expression->return == LinqExpression::SEQUENCES) && !$result->skipped) {
+            if ($expression->return == LinqExpression::FILTERING) {
                 if ($exprResult === true) {
-                    $result->skipped = false;
-                    ++$result->sequences;
+                    $result->filtered = false;
+                    $result->containsCounter = 1;
                 } else {
-                    $result->skipped = true;
+                    $result->filtered = true;
+                    $result->containsCounter = 0;
                 }
             }
             if ($expression->return == LinqExpression::PROJECTION) {
                 $value = $exprResult;
+            }
+            if ($expression->return==LinqExpression::SEQUENCES) {
+                if ($exprResult === true) {
+                    $result->containsCounter = 1;
+                } else {
+                    $result->containsCounter = 0;
+                }
             }
             $result->value = $value;
         }
