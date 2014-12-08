@@ -11,29 +11,29 @@ use LinqLite\Comparer\ComparerParam;
 /**
  * Class Linq
  *
- * @version 1.4.6
- * @package Linq
+ * @version       1.4.6
+ * @package       Linq
  * @property-read integer $rank Returns array rank
  */
 class LinqLite
 {
     /**
+     * Inner source array
      * @var array
      * @access protected
-     * Inner source array
      */
     protected $inputArray = [];
     /**
+     * Inner predicates collection
      * @var \Closure[]
      * @access protected
-     * Inner predicates collection
      */
     protected $predicates = [];
 
     /**
      * Set source array
      *
-     * @param array $source Source array
+     * @param array $source Source array.
      *
      * @return LinqLite
      */
@@ -64,7 +64,7 @@ class LinqLite
     /**
      * Filters the elements of an array on a specified type.
      *
-     * @param string $type Type string name
+     * @param string $type Type string name.
      *
      * @return LinqLite
      */
@@ -102,10 +102,9 @@ class LinqLite
     /**
      * Correlates the elements of two arrays based on matching keys.
      *
-     * @param array $inner
-     *
-     * @param \Closure $outerSelector A function to extract the join key from each element of the source array.
-     * @param \Closure $innerSelector A function to extract the join key from each element of the second array.
+     * @param array    $inner          The sequence to join to the source array.
+     * @param \Closure $outerSelector  A function to extract the join key from each element of the source array.
+     * @param \Closure $innerSelector  A function to extract the join key from each element of the second array.
      * @param \Closure $resultSelector A transform function to apply to each element.
      *
      * @return array
@@ -157,7 +156,7 @@ class LinqLite
      * Groups the elements of an array according to a specified key selector function and projects the elements for each group by using a specified function.
      *
      * @param \Closure $keySelector A function to extract the key for each element.
-     * @param \Closure $selector A transform function to apply to each element.
+     * @param \Closure $selector    A transform function to apply to each element.
      *
      * @return array
      */
@@ -179,9 +178,9 @@ class LinqLite
     /**
      * Correlates the elements of two arrays based on key equality, and groups the results.
      *
-     * @param array $inner The sequence to join to the source array.
-     * @param \Closure $outerSelector A function to extract the join key from each element of the source array.
-     * @param \Closure $innerSelector A function to extract the join key from each element of the second array.
+     * @param array    $inner          The sequence to join to the source array.
+     * @param \Closure $outerSelector  A function to extract the join key from each element of the source array.
+     * @param \Closure $innerSelector  A function to extract the join key from each element of the second array.
      * @param \Closure $resultSelector A transform function to apply to each element.
      *
      * @return array
@@ -208,11 +207,10 @@ class LinqLite
     /**
      * Merges two arrays by using the specified predicate function.
      *
-     * @param array $second The second array to merge.
+     * @param array    $second         The second array to merge.
      * @param \Closure $resultSelector A function that specifies how to merge the elements from the two arrays.
      *
-     * @throws ArgumentNullException
-     * Second is null.
+     * @throws ArgumentNullException Second is null.
      *
      * @return array
      */
@@ -248,8 +246,7 @@ class LinqLite
      *
      * @param \Closure $predicate A function to test each element for a condition.
      *
-     * @throws InvalidOperationException
-     * The source array is empty.
+     * @throws InvalidOperationException The source array is empty.
      *
      * @return mixed
      */
@@ -276,8 +273,7 @@ class LinqLite
      *
      * @param \Closure $predicate A function to test each element for a condition.
      *
-     * @throws InvalidOperationException
-     * The source array is empty.
+     * @throws InvalidOperationException The source array is empty.
      *
      * @return mixed
      */
@@ -304,9 +300,8 @@ class LinqLite
      *
      * @param \Closure $predicate A function to test each element for a condition.
      *
-     * @throws InvalidOperationException
-     * More than one element satisfies the condition.
-     * The input array contains more than one element.
+     * @throws InvalidOperationException More than one element satisfies the condition.
+     *                                   The input array contains more than one element.
      *
      * @return mixed
      */
@@ -338,10 +333,8 @@ class LinqLite
      *
      * @param integer $index The zero-based index of the element to retrieve.
      *
-     * @throws IndexOutOfRangeException
-     * Index is less than 0 or greater than or equal to the number of elements in array.
-     * @throws InvalidOperationException
-     * The source array is empty.
+     * @throws IndexOutOfRangeException Index is less than 0 or greater than or equal to the number of elements in array.
+     * @throws InvalidOperationException The source array is empty.
      *
      * @return mixed
      */
@@ -363,7 +356,7 @@ class LinqLite
     /**
      * Searches for the specified object and returns the key of the first occurrence within the range of elements in the array that starts at the specified index and contains the specified number of elements.
      *
-     * @param mixed $value Value to locate in the array.
+     * @param mixed        $value Value to locate in the array.
      * @param integer|null $start Starting position of the search.
      * @param integer|null $count The number of elements within a range in which to search.
      *
@@ -398,7 +391,7 @@ class LinqLite
     /**
      * Searches for the specified object and returns the key of the last occurrence within the range of elements in the array that starts at the specified index and contains the specified number of elements.
      *
-     * @param mixed $value Value to locate in the array.
+     * @param mixed        $value Value to locate in the array.
      * @param integer|null $start Starting position of the search.
      * @param integer|null $count The number of elements within a range in which to search.
      *
@@ -440,8 +433,8 @@ class LinqLite
     /**
      * Determines whether an array contains a specified element by using a specified IComparer.
      *
-     * @param ComparerParam|mixed $value The value to locate in the sequence.
-     * @param IComparer $comparer An equality comparer to compare values.
+     * @param ComparerParam|mixed $value    The value to locate in the sequence.
+     * @param IComparer           $comparer An equality comparer to compare values.
      *
      * @return boolean
      */
@@ -494,8 +487,7 @@ class LinqLite
      *
      * @param \Closure $predicate A function to test each element for a condition.
      *
-     * @throws ArgumentNullException
-     * Predicate is null.
+     * @throws ArgumentNullException Predicate is null.
      *
      * @return boolean
      */
@@ -521,7 +513,7 @@ class LinqLite
     /**
      * Determines whether two arrays are equal by comparing their elements by using a specified IComparer.
      *
-     * @param array $second An array to compare to the source array.
+     * @param array     $second   An array to compare to the source array.
      * @param IComparer $comparer An equality comparer to compare values.
      *
      * @return boolean
@@ -619,7 +611,7 @@ class LinqLite
     /**
      * Calculate all predicates
      *
-     * @param boolean $isList Is true create associative array
+     * @param boolean $isList Is true create associative array.
      *
      * @return array
      */
@@ -656,8 +648,8 @@ class LinqLite
     /**
      * Validate variable type
      *
-     * @param mixed $value Source variable
-     * @param string $type String type name
+     * @param mixed  $value Source variable.
+     * @param string $type  String type name.
      *
      * @return boolean
      */
@@ -673,8 +665,8 @@ class LinqLite
     /**
      * Calculate array rank
      *
-     * @param array $array Source rank
-     * @param integer $rank Rank
+     * @param array   $array Source rank.
+     * @param integer $rank  Rank.
      *
      * @return float|int
      */
@@ -714,10 +706,9 @@ class LinqLite
     /**
      * Magical method
      *
-     * @param string $name Property name
+     * @param string $name Property name.
      *
-     * @throws \Exception
-     * Undefined property referenced.
+     * @throws \Exception Undefined property referenced.
      *
      * @return mixed
      */
