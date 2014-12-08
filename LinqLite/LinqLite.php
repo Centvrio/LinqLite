@@ -33,6 +33,8 @@ class LinqLite
      * @var integer
      */
     private $containsCount = 0;
+    private $valuesSum = 0;
+    private $aggregateResult = null;
 
     private function __construct()
     {
@@ -195,6 +197,37 @@ class LinqLite
 
     // endregion
 
+    // region Aggregation
+
+    public function aggregate(\Closure $func)
+    {
+        $expression = new LinqExpression();
+        $expression->closure = $func;
+        $expression->return = LinqExpression::AGGREGATION;
+        $this->expressions[] = $expression;
+        $this->getResult();
+        return $this->aggregateResult;
+    }
+
+    public function average()
+    {
+        $result = null;
+        $expression = new LinqExpression();
+        $expression->closure = function ($value, $key) {
+            return is_numeric($value);
+        };
+        $expression->return = LinqExpression::FILTERING;
+        $this->expressions[] = $expression;
+        $array = $this->getResult();
+        if (count($array) > 0) {
+            $result = $this->valuesSum / count($array);
+            $this->valuesSum = 0;
+        }
+        return $result;
+    }
+
+    // endregion
+
     // region Conversion
 
     /**
@@ -234,6 +267,7 @@ class LinqLite
         $result = [];
         if (count($this->expressions) > 0 && count($this->storage) > 0) {
             $iterator = new LinqIterator($this->storage, $this->expressions);
+            $value = null;
             while ($iterator->valid()) {
                 $key = $iterator->key();
                 $value = $iterator->current();
@@ -243,10 +277,14 @@ class LinqLite
                     } else {
                         $result[] = $value->value;
                     }
+                    if (is_numeric($value->value)) {
+                        $this->valuesSum += $value->value;
+                    }
                     $this->containsCount += $value->containsCounter;
                 }
                 $iterator->next();
             }
+            $this->aggregateResult = $value->accumulate;
         }
         return $result;
     }
