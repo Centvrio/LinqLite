@@ -54,6 +54,12 @@ final class LinqIterator implements \Iterator
                     case LinqExpression::SEARCHES:
                         $this->searches($expression, $result);
                         break;
+                    case LinqExpression::LOOKUP:
+                        $this->lookup($expression, $result);
+                        break;
+                    case LinqExpression::JOINING:
+                        $this->joining($expression, $result);
+                        break;
                 }
             }
         }
@@ -153,6 +159,36 @@ final class LinqIterator implements \Iterator
             } else {
                 $result->filtered = true;
             }
+        }
+        return $result;
+    }
+
+    private function lookup(LinqExpression $expr, LinqIteratorResult $result)
+    {
+        if (!$result->filtered) {
+            $closure = $expr->closure;
+            $returnValue = $closure($result->value, $result->key);
+            $result->key = $returnValue;
+            $result->isLookup = true;
+        }
+        return $result;
+    }
+
+    private function joining(LinqExpression $expr, LinqIteratorResult $result)
+    {
+        if (!$result->filtered) {
+            $outerKeySelector = $expr->closure[0];
+            $innerKeySelector = $expr->closure[1];
+            $resultSelector = $expr->closure[2];
+            $outerKey = $outerKeySelector($result->value, $result->key);
+            $resultValue = [];
+            foreach ($expr->params[0] as $innerKey => $innerValue) {
+                if ($outerKey === $innerKeySelector($innerValue, $innerKey)) {
+                    $resultValue[][$outerKey] = $resultSelector($result->value, $innerValue);
+                }
+            }
+            $result->value = $resultValue;
+            $result->isJoining = true;
         }
         return $result;
     }

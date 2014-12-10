@@ -17,6 +17,7 @@ use LinqLite\Iterator\LinqIterator;
  *
  * @version 2.0.0
  * @package LinqLite
+ * @property-read integer $rank Returns array rank
  */
 class LinqLite
 {
@@ -36,6 +37,7 @@ class LinqLite
      */
     private $contains = 0;
     private $aggregateResult = null;
+    protected $isDictionary = false;
 
     private function __construct()
     {
@@ -104,6 +106,41 @@ class LinqLite
             $expression->return = LinqExpression::PROJECTION;
             $this->expressions[] = $expression;
         }
+        return $this;
+    }
+
+    // endregion
+
+    // region Joining
+
+    public function join(array $inner, \Closure $outerSelector, \Closure $innerSelector, \Closure $resultSelector)
+    {
+        if (!is_null($outerSelector) && !is_null($innerSelector) && !is_null($resultSelector) && count($inner) > 0) {
+            $expression = new LinqExpression();
+            $expression->closure[] = $outerSelector;
+            $expression->closure[] = $innerSelector;
+            $expression->closure[] = $resultSelector;
+            $expression->params[] = $inner;
+            $expression->return = LinqExpression::JOINING;
+            $this->expressions[] = $expression;
+        }
+        $this->isDictionary = false;
+        return $this;
+    }
+
+    // endregion
+
+    // region Grouping
+
+    public function toLookup(\Closure $keySelector)
+    {
+        if (!is_null($keySelector)) {
+            $expression = new LinqExpression();
+            $expression->closure = $keySelector;
+            $expression->return = LinqExpression::LOOKUP;
+            $this->expressions[] = $expression;
+        }
+        $this->isDictionary = true;
         return $this;
     }
 
@@ -268,7 +305,7 @@ class LinqLite
         $expression->return = LinqExpression::SEARCHES;
         $this->expressions[] = $expression;
         $array = $this->getResult(true);
-        $result=key($array);
+        $result = key($array);
         return $result;
     }
 
@@ -285,7 +322,7 @@ class LinqLite
         $this->expressions[] = $expression;
         $array = $this->getResult(true);
         end($array);
-        $result=key($array);
+        $result = key($array);
         return $result;
     }
 
@@ -451,11 +488,14 @@ class LinqLite
             $iterator = new LinqIterator($this->storage, $this->expressions);
             $value = null;
             while ($iterator->valid()) {
-                $key = $iterator->key();
                 $value = $iterator->current();
                 if (!$value->filtered) {
                     if ($isDictionary) {
-                        $result[$key] = $value->value;
+                        if ($value->isLookup) {
+                            $result[$value->key][] = $value->value;
+                        } else {
+                            $result[$value->key] = $value->value;
+                        }
                     } else {
                         $result[] = $value->value;
                     }
@@ -465,7 +505,68 @@ class LinqLite
                 $iterator->next();
             }
         }
+        $this->isDictionary = false;
         return $result;
+    }
+
+    /**
+     * Calculate array rank
+     *
+     * @param array   $array Source rank.
+     * @param integer $rank  Rank.
+     *
+     * @return float|int
+     */
+    private function recursiveRank(array $array, $rank = 0)
+    {
+        $counter = 0;
+        foreach ($array as $item) {
+            if (is_array($item)) {
+                $rank++;
+                $rank = $this->recursiveRank($item, $rank);
+            }
+        }
+        $count = count($array) > 0 ? count($array) : 1;
+        $counter += ($rank / $count);
+        return $counter;
+    }
+
+    /**
+     * Property rank getter
+     *
+     * @return integer
+     */
+    protected function getRank()
+    {
+        $array = $this->getResult();
+        if (count($array) > 0) {
+            return intval(ceil($this->recursiveRank($array) + 1));
+        } else {
+            return 0;
+        }
+    }
+
+    // endregion
+
+    // region Magical
+
+    /**
+     * Magical method
+     *
+     * @param string $name Property name.
+     *
+     * @throws \Exception Undefined property referenced.
+     *
+     * @return mixed
+     */
+    public function __get($name)
+    {
+        $methodName = 'get' . $name;
+        if (method_exists($this, $methodName)) {
+            return $this->{$methodName}();
+        } else {
+            throw new \Exception('Undefined property "' . $name . '" referenced.');
+        }
     }
 
     // endregion
