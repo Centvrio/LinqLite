@@ -3,7 +3,7 @@
     "description": "Linq Lite for PHP",
     "license": "MIT",
     "type": "library",
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "authors": [
         {
             "name": "Sergey Sytnic",
