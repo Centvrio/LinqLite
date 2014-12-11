@@ -60,11 +60,17 @@ final class LinqIterator implements \Iterator
                     case LinqExpression::JOINING:
                         $this->joining($expression, $result);
                         break;
+                    case LinqExpression::GROUPING:
+                        $this->grouping($expression, $result);
+                        break;
+                    case LinqExpression::GROUPING | LinqExpression::JOINING:
+                        $this->groupingAndJoining($expression, $result);
+                        break;
+                    case LinqExpression::ZIP:
+                        $this->zip($expression, $result);
+                        break;
                 }
             }
-        }
-        if (!$result->filtered) {
-            var_dump($result);
         }
         return $result;
     }
@@ -167,9 +173,9 @@ final class LinqIterator implements \Iterator
     {
         if (!$result->filtered) {
             $closure = $expr->closure;
-            $returnValue = $closure($result->value, $result->key);
-            $result->key = $returnValue;
-            $result->isLookup = true;
+            $newKey = $closure($result->value, $result->key);
+            $result->key = $newKey;
+            $result->isGrouping = true;
         }
         return $result;
     }
@@ -193,4 +199,51 @@ final class LinqIterator implements \Iterator
         return $result;
     }
 
-} 
+    private function grouping(LinqExpression $expr, LinqIteratorResult $result)
+    {
+        if (!$result->filtered) {
+            $keySelector = $expr->closure[0];
+            $selector = $expr->closure[1];
+            $newKey = $keySelector($result->value, $result->key);
+            $newValue = $selector($result->value, $result->key);
+            $result->key = $newKey;
+            $result->value = $newValue;
+            $result->isGrouping = true;
+        }
+        return $result;
+    }
+
+    private function groupingAndJoining(LinqExpression $expr, LinqIteratorResult $result)
+    {
+        if (!$result->filtered) {
+            $outerKeySelector = $expr->closure[0];
+            $innerKeySelector = $expr->closure[1];
+            $resultSelector = $expr->closure[2];
+            $outerKey = $outerKeySelector($result->value, $result->key);
+            $resultValue = [];
+            foreach ($expr->params[0] as $innerKey => $innerValue) {
+                if ($outerKey === $innerKeySelector($innerValue, $innerKey)) {
+                    $resultValue[$innerKey] = $innerValue;
+                }
+            }
+            $result->key = $outerKey;
+            $result->value = $resultSelector($result->value, $resultValue);
+        }
+        return $result;
+    }
+
+    private function zip(LinqExpression $expr, LinqIteratorResult $result)
+    {
+        if (!$result->filtered) {
+            $closure = $expr->closure;
+            $second = $expr->params[0];
+            if ($second->offsetExists($result->index) !== false) {
+                $result->value = $closure($result->value, $second->offsetGet($result->index));
+            } else {
+                $result->filtered = true;
+            }
+
+        }
+        return $result;
+    }
+}

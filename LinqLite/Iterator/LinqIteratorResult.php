@@ -10,6 +10,6 @@ class LinqIteratorResult
     public $contains = true;
     public $index = 0;
     public $aggregate = null;
-    public $isLookup = false;
     public $isJoining = false;
+    public $isGrouping = false;
 }

@@ -37,7 +37,7 @@ class LinqLite
      */
     private $contains = 0;
     private $aggregateResult = null;
-    protected $isDictionary = false;
+    protected $isDictionary = null;
 
     private function __construct()
     {
@@ -113,12 +113,12 @@ class LinqLite
 
     // region Joining
 
-    public function join(array $inner, \Closure $outerSelector, \Closure $innerSelector, \Closure $resultSelector)
+    public function join(array $inner, \Closure $outerKeySelector, \Closure $innerKeySelector, \Closure $resultSelector)
     {
-        if (!is_null($outerSelector) && !is_null($innerSelector) && !is_null($resultSelector) && count($inner) > 0) {
+        if (!is_null($outerKeySelector) && !is_null($innerKeySelector) && !is_null($resultSelector) && count($inner) > 0) {
             $expression = new LinqExpression();
-            $expression->closure[] = $outerSelector;
-            $expression->closure[] = $innerSelector;
+            $expression->closure[] = $outerKeySelector;
+            $expression->closure[] = $innerKeySelector;
             $expression->closure[] = $resultSelector;
             $expression->params[] = $inner;
             $expression->return = LinqExpression::JOINING;
@@ -141,6 +141,47 @@ class LinqLite
             $this->expressions[] = $expression;
         }
         $this->isDictionary = true;
+        return $this;
+    }
+
+    public function groupBy(\Closure $keySelector, \Closure $selector)
+    {
+        if (!is_null($keySelector) && !is_null($selector)) {
+            $expression = new LinqExpression();
+            $expression->closure[] = $keySelector;
+            $expression->closure[] = $selector;
+            $expression->return = LinqExpression::GROUPING;
+            $this->expressions[] = $expression;
+        }
+        $this->isDictionary = true;
+        return $this;
+    }
+
+    public function groupJoin(array $inner, \Closure $outerKeySelector, \Closure $innerKeySelector, \Closure $resultSelector)
+    {
+        if (!is_null($outerKeySelector) && !is_null($innerKeySelector) && !is_null($resultSelector) && count($inner) > 0) {
+            $expression = new LinqExpression();
+            $expression->closure[] = $outerKeySelector;
+            $expression->closure[] = $innerKeySelector;
+            $expression->closure[] = $resultSelector;
+            $expression->params[] = $inner;
+            $expression->return = LinqExpression::JOINING | LinqExpression::GROUPING;
+            $this->expressions[] = $expression;
+        }
+        $this->isDictionary = true;
+        return $this;
+    }
+
+    public function zip(array $second, \Closure $resultSelector)
+    {
+        if (is_null($resultSelector)) {
+            throw new ArgumentNullException();
+        }
+        $expression = new LinqExpression();
+        $expression->closure = $resultSelector;
+        $expression->return = LinqExpression::ZIP;
+        $expression->params[0] = new \ArrayObject($second);
+        $this->expressions[] = $expression;
         return $this;
     }
 
@@ -487,17 +528,24 @@ class LinqLite
         if (count($this->storage) > 0) {
             $iterator = new LinqIterator($this->storage, $this->expressions);
             $value = null;
+            if (!is_null($this->isDictionary)) {
+                $isDictionary = $this->isDictionary;
+            }
             while ($iterator->valid()) {
                 $value = $iterator->current();
                 if (!$value->filtered) {
                     if ($isDictionary) {
-                        if ($value->isLookup) {
+                        if ($value->isGrouping) {
                             $result[$value->key][] = $value->value;
                         } else {
                             $result[$value->key] = $value->value;
                         }
                     } else {
-                        $result[] = $value->value;
+                        if ($value->isJoining) {
+                            $result = array_merge($value->value, $result);
+                        } else {
+                            $result[] = $value->value;
+                        }
                     }
                     $this->contains += abs(intval($value->contains));
                     $this->aggregateResult = $value->aggregate;
@@ -505,7 +553,7 @@ class LinqLite
                 $iterator->next();
             }
         }
-        $this->isDictionary = false;
+        $this->isDictionary = null;
         return $result;
     }
 
@@ -515,7 +563,7 @@ class LinqLite
      * @param array   $array Source rank.
      * @param integer $rank  Rank.
      *
-     * @return float|int
+     * @return float|integer
      */
     private function recursiveRank(array $array, $rank = 0)
     {
