@@ -9,13 +9,11 @@ use LinqLite\Exception\ArgumentException;
 use LinqLite\Exception\ArgumentNullException;
 use LinqLite\Exception\IndexOutOfRangeException;
 use LinqLite\Exception\InvalidOperationException;
-use LinqLite\Expression\LinqExpression;
-use LinqLite\Iterator\LinqIterator;
 
 /**
  * Class LinqLite
  *
- * @version 2.0.0
+ * @version 1.4.7
  * @package LinqLite
  * @property-read integer $rank Returns array rank
  */
@@ -26,17 +24,6 @@ class LinqLite
      */
     protected $storage = [];
 
-    /**
-     * @var LinqExpression[]
-     */
-    protected $expressions = [];
-
-
-    /**
-     * @var integer
-     */
-    private $contains = 0;
-    private $aggregateResult = null;
     protected $isDictionary = null;
 
     private function __construct()
@@ -52,7 +39,7 @@ class LinqLite
      */
     public static function from($source)
     {
-        $instance = new self();
+        $instance = new static();
         if (is_null($source)) {
             throw new ArgumentNullException('Source is null.');
         }
@@ -63,6 +50,7 @@ class LinqLite
         } else {
             throw new ArgumentException();
         }
+
         return $instance;
     }
 
@@ -70,27 +58,22 @@ class LinqLite
 
     public function where(\Closure $predicate)
     {
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::FILTERING;
-            $this->expressions[] = $expression;
-        }
+        $this->getWhere($predicate);
+
         return $this;
     }
 
     public function ofType($type)
     {
-        $expression = new LinqExpression();
-        $expression->closure = function ($value) use ($type) {
+        $predicate = function ($value) use ($type) {
             if (is_object($value)) {
                 return $value instanceof $type;
             } else {
                 return gettype($value) === $type;
             }
         };
-        $expression->return = LinqExpression::FILTERING;
-        $this->expressions[] = $expression;
+        $this->getWhere($predicate);
+
         return $this;
     }
 
@@ -101,11 +84,11 @@ class LinqLite
     public function select(\Closure $selector)
     {
         if (!is_null($selector)) {
-            $expression = new LinqExpression();
-            $expression->closure = $selector;
-            $expression->return = LinqExpression::PROJECTION;
-            $this->expressions[] = $expression;
+            foreach ($this->storage as $key => $value) {
+                $this->storage[$key] = $selector($value, $key);
+            }
         }
+
         return $this;
     }
 
@@ -115,16 +98,23 @@ class LinqLite
 
     public function join(array $inner, \Closure $outerKeySelector, \Closure $innerKeySelector, \Closure $resultSelector)
     {
-        if (!is_null($outerKeySelector) && !is_null($innerKeySelector) && !is_null($resultSelector) && count($inner) > 0) {
-            $expression = new LinqExpression();
-            $expression->closure[] = $outerKeySelector;
-            $expression->closure[] = $innerKeySelector;
-            $expression->closure[] = $resultSelector;
-            $expression->params[] = $inner;
-            $expression->return = LinqExpression::JOINING;
-            $this->expressions[] = $expression;
+        $result = [];
+        if (!is_null($outerKeySelector) && !is_null($innerKeySelector) && !is_null($resultSelector)) {
+            $outer = $this->storage;
+            if (count($outer) > 0 && count($inner) > 0) {
+                foreach ($outer as $outerKey => $outerItem) {
+                    $resultKey = $outerKeySelector($outerItem, $outerKey);
+                    foreach ($inner as $innerKey => $innerItem) {
+                        if ($resultKey == $innerKeySelector($innerItem, $innerKey)) {
+                            $result[][$resultKey] = $resultSelector($outerItem, $innerItem);
+                        }
+                    }
+                }
+                $this->storage = $result;
+            }
         }
         $this->isDictionary = false;
+
         return $this;
     }
 
@@ -134,41 +124,61 @@ class LinqLite
 
     public function toLookup(\Closure $keySelector)
     {
-        if (!is_null($keySelector)) {
-            $expression = new LinqExpression();
-            $expression->closure = $keySelector;
-            $expression->return = LinqExpression::LOOKUP;
-            $this->expressions[] = $expression;
+        if (!is_null($keySelector) && count($this->storage) > 0) {
+            $items = $this->storage;
+            $lookup = [];
+            foreach ($items as $key => $item) {
+                $newKey = $keySelector($item, $key);
+                $lookup[$newKey][] = $item;
+            }
+            $this->storage = $lookup;
         }
         $this->isDictionary = true;
+
         return $this;
     }
 
     public function groupBy(\Closure $keySelector, \Closure $selector)
     {
-        if (!is_null($keySelector) && !is_null($selector)) {
-            $expression = new LinqExpression();
-            $expression->closure[] = $keySelector;
-            $expression->closure[] = $selector;
-            $expression->return = LinqExpression::GROUPING;
-            $this->expressions[] = $expression;
+        if (!is_null($keySelector) && !is_null($selector) && count($this->storage) > 0) {
+            $items = $this->storage;
+            $grouped = [];
+            foreach ($items as $key => $item) {
+                $newKey = $keySelector($item, $key);
+                $grouped[$newKey][] = $selector($item, $key);
+            }
+            $this->storage = $grouped;
         }
         $this->isDictionary = true;
+
         return $this;
     }
 
-    public function groupJoin(array $inner, \Closure $outerKeySelector, \Closure $innerKeySelector, \Closure $resultSelector)
-    {
+    public function groupJoin(
+        array $inner,
+        \Closure $outerKeySelector,
+        \Closure $innerKeySelector,
+        \Closure $resultSelector
+    ) {
+        $result = [];
         if (!is_null($outerKeySelector) && !is_null($innerKeySelector) && !is_null($resultSelector) && count($inner) > 0) {
-            $expression = new LinqExpression();
-            $expression->closure[] = $outerKeySelector;
-            $expression->closure[] = $innerKeySelector;
-            $expression->closure[] = $resultSelector;
-            $expression->params[] = $inner;
-            $expression->return = LinqExpression::JOINING | LinqExpression::GROUPING;
-            $this->expressions[] = $expression;
+            $outer = $this->storage;
+            if (count($outer) > 0 && count($inner) > 0) {
+                foreach ($outer as $outerKey => $outerItem) {
+                    $resultKey = $outerKeySelector($outerItem, $outerKey);
+                    $innerTemp = [];
+                    foreach ($inner as $innerKey => $innerItem) {
+                        if ($resultKey == $innerKeySelector($innerItem, $innerKey)) {
+                            $innerTemp[$innerKey] = $innerItem;
+                        }
+                    }
+                    $result[$resultKey] = $resultSelector($outerItem, $innerTemp);
+                }
+            }
+            $this->storage = $result;
         }
         $this->isDictionary = true;
+
         return $this;
     }
 
@@ -177,11 +187,25 @@ class LinqLite
         if (is_null($resultSelector)) {
             throw new ArgumentNullException();
         }
-        $expression = new LinqExpression();
-        $expression->closure = $resultSelector;
-        $expression->return = LinqExpression::ZIP;
-        $expression->params[0] = new \ArrayObject($second);
-        $this->expressions[] = $expression;
+        $result = [];
+        $first = $this->storage;
+        reset($first);
+        reset($second);
+        $countFirst = count($first);
+        $countSecond = count($second);
+        $count = $countFirst != $countSecond ? ($countFirst < $countSecond ? $countFirst : $countSecond) : $countFirst;
+        if ($count > 0) {
+            for ($i = 0; $i < $count; $i++) {
+                $firstItem = current($first);
+                $secondItem = current($second);
+                $result[] = $resultSelector($firstItem, $secondItem);
+                next($first);
+                next($second);
+            }
+            $this->storage = $result;
+        }
+        $this->isDictionary = false;
+
         return $this;
     }
 
@@ -191,12 +215,7 @@ class LinqLite
 
     public function first(\Closure $predicate = null)
     {
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::FILTERING;
-            $this->expressions[] = $expression;
-        }
+        $this->getWhere($predicate);
         $array = $this->getResult();
         if (count($array) > 0) {
             $result = $array[0];
@@ -206,34 +225,26 @@ class LinqLite
             }
             throw new InvalidOperationException('The source array is empty.');
         }
+
         return $result;
     }
 
     public function firstOrDefault(\Closure $predicate = null, $defaultValue = null)
     {
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::FILTERING;
-            $this->expressions[] = $expression;
-        }
+        $this->getWhere($predicate);
         $array = $this->getResult();
         if (count($array) > 0) {
             $result = $array[0];
         } else {
             $result = $defaultValue;
         }
+
         return $result;
     }
 
     public function last(\Closure $predicate = null)
     {
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::FILTERING;
-            $this->expressions[] = $expression;
-        }
+        $this->getWhere($predicate);
         $array = $this->getResult();
         $count = count($array);
         if ($count > 0) {
@@ -244,17 +255,13 @@ class LinqLite
             }
             throw new InvalidOperationException('The source array is empty.');
         }
+
         return $result;
     }
 
     public function lastOrDefault(\Closure $predicate = null, $defaultValue = null)
     {
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::FILTERING;
-            $this->expressions[] = $expression;
-        }
+        $this->getWhere($predicate);
         $array = $this->getResult();
         $count = count($array);
         if ($count > 0) {
@@ -262,17 +269,13 @@ class LinqLite
         } else {
             $result = $defaultValue;
         }
+
         return $result;
     }
 
     public function single(\Closure $predicate = null)
     {
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::FILTERING;
-            $this->expressions[] = $expression;
-        }
+        $this->getWhere($predicate);
         $array = $this->getResult();
         $count = count($array);
         if ($count > 0) {
@@ -294,16 +297,18 @@ class LinqLite
 
     public function singleOrDefault(\Closure $predicate = null, $defaultValue = null)
     {
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::FILTERING;
-            $this->expressions[] = $expression;
-        }
+        $this->getWhere($predicate);
         $array = $this->getResult();
         $count = count($array);
         if ($count > 0) {
-            return $array[0];
+            if ($count == 1) {
+                return $array[0];
+            } else {
+                if (!is_null($predicate)) {
+                    throw new InvalidOperationException('More than one element satisfies the condition.');
+                }
+                throw new InvalidOperationException('The input array contains more than one element.');
+            }
         } else {
             return $defaultValue;
         }
@@ -321,6 +326,7 @@ class LinqLite
         } else {
             throw new InvalidOperationException('The source array is empty.');
         }
+
         return $result;
     }
 
@@ -331,39 +337,62 @@ class LinqLite
         if ($index > ($count - 1) || $index < 0) {
             return $defaultValue;
         }
+
         return $array[$index];
     }
 
     public function indexOf($value, $start = null, $count = null)
     {
         $result = null;
-        $expression = new LinqExpression();
-        $expression->closure = function ($v, $i, $c) use ($value, $start, $count) {
-            $start = is_null($start) || $start < 0 ? 0 : $start;
-            $count = is_null($count) || $count < 0 ? true : ($c <= $count);
-            return $v === $value && $i >= ($start - 1) && $count;
-        };
-        $expression->return = LinqExpression::SEARCHES;
-        $this->expressions[] = $expression;
         $array = $this->getResult(true);
-        $result = key($array);
+        if (count($array) > 0) {
+            $start = is_null($start) || $start < 0 ? 0 : $start;
+            $count = is_null($count) ? count($array) : $count + $start;
+            reset($array);
+            for ($i = 0; $i < $count; $i++) {
+                if ($i < $start) {
+                    next($array);
+                    continue;
+                }
+                $item = current($array);
+                $key = key($array);
+                if ($item === $value) {
+                    $result = $key;
+                    break;
+                }
+                next($array);
+            }
+        }
+
         return $result;
     }
 
     public function lastIndexOf($value, $start = null, $count = null)
     {
         $result = null;
-        $expression = new LinqExpression();
-        $expression->closure = function ($v, $i, $c) use ($value, $start, $count) {
-            $start = is_null($start) || $start < 0 ? 0 : $start;
-            $count = is_null($count) || $count < 0 ? true : ($c <= $count);
-            return $v === $value && $i >= ($start - 1) && $count;
-        };
-        $expression->return = LinqExpression::SEARCHES;
-        $this->expressions[] = $expression;
+        $keys = [];
         $array = $this->getResult(true);
-        end($array);
-        $result = key($array);
+        if (count($array) > 0) {
+            $start = is_null($start) || $start < 0 ? 0 : $start;
+            $count = is_null($count) ? count($array) : $count + $start;
+            reset($array);
+            for ($i = 0; $i < $count; $i++) {
+                if ($i < $start) {
+                    next($array);
+                    continue;
+                }
+                $item = current($array);
+                $key = key($array);
+                if ($item === $value) {
+                    $keys[] = $key;
+                }
+                next($array);
+            }
+            if (count($keys) > 0) {
+                $result = end($keys);
+            }
+        }
+
         return $result;
     }
 
@@ -371,88 +400,117 @@ class LinqLite
 
     // region Sequences
 
-    public function any(\Closure $predicate = null)
+    /**
+     * Determines whether an array contains a specified element by using a specified IComparer.
+     *
+     * @param ComparerParam|mixed $value The value to locate in the sequence.
+     * @param IComparer $comparer An equality comparer to compare values.
+     *
+     * @return boolean
+     */
+    public function contains($value, IComparer $comparer = null)
     {
         $result = false;
-        if (!is_null($predicate)) {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::SEQUENCES;
-            $this->expressions[] = $expression;
-            $this->getResult();
-            if ($this->contains > 0) {
+        $array = $this->getResult(true);
+        if (is_null($comparer)) {
+            $comparer = new DefaultComparer();
+        }
+        foreach ($array as $key => $item) {
+            if (!($value instanceof ComparerParam)) {
+                $value = new ComparerParam($value, $key);
+            }
+            $equals = $comparer->equals(new ComparerParam($item, $key), $value);
+            if ($equals) {
                 $result = true;
-                $this->contains = 0;
+                break;
             }
         }
+
         return $result;
     }
 
+    /**
+     * Determines whether any element of an array exists or satisfies a condition.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @return boolean
+     */
+    public function any(\Closure $predicate = null)
+    {
+        $array = $this->getResult(true);
+        $result = false;
+        if (is_null($predicate)) {
+            $result = (count($array) > 0);
+        } else {
+            foreach ($array as $key => $item) {
+                if ($predicate($item, $key)) {
+                    $result = true;
+                    break;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Determines whether all elements of an array satisfy a condition.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @throws ArgumentNullException Predicate is null.
+     *
+     * @return boolean
+     */
     public function all(\Closure $predicate)
     {
+        $array = $this->getResult(true);
         $result = true;
         if (is_null($predicate)) {
             throw new ArgumentNullException();
         } else {
-            $expression = new LinqExpression();
-            $expression->closure = $predicate;
-            $expression->return = LinqExpression::SEQUENCES;
-            $this->expressions[] = $expression;
-            $array = $this->getResult();
-            if ($this->contains != count($array)) {
-                $result = false;
-                $this->contains = 0;
+            if (count($array) > 0) {
+                foreach ($array as $key => $item) {
+                    if (!$predicate($item, $key)) {
+                        $result = false;
+                        break;
+                    }
+                }
             }
         }
+
         return $result;
     }
 
-    public function contains($value, IComparer $comparer = null)
-    {
-        $result = false;
-        if (is_null($comparer)) {
-            $comparer = new DefaultComparer();
-        }
-        $expression = new LinqExpression();
-        $expression->closure = function ($item, $key) use ($value, $comparer) {
-            if (!($value instanceof ComparerParam)) {
-                $value = new ComparerParam($value, $key);
-            }
-            return $comparer->equals(new ComparerParam($item, $key), $value);
-        };
-        $expression->return = LinqExpression::SEQUENCES;
-        $this->expressions[] = $expression;
-        $this->getResult();
-        if ($this->contains > 0) {
-            $result = true;
-            $this->contains = 0;
-        }
-        return $result;
-    }
-
-
+    /**
+     * Determines whether two arrays are equal by comparing their elements by using a specified IComparer.
+     *
+     * @param array $second An array to compare to the source array.
+     * @param IComparer $comparer An equality comparer to compare values.
+     *
+     * @return boolean
+     */
     public function sequenceEqual(array $second, IComparer $comparer = null)
     {
         $result = false;
-        if (is_null($comparer)) {
-            $comparer = new DefaultComparer();
+        $first = $this->getResult(true);
+        if ((count($first) == count($second)) && count($first) > 0 && count($second) > 0) {
+            if (is_null($comparer)) {
+                $comparer = new DefaultComparer();
+            }
+            reset($first);
+            reset($second);
+            $equals = true;
+            foreach ($first as $xKey => $x) {
+                $y = current($second);
+                $yKey = key($second);
+                $equals = $equals && $comparer->equals(new ComparerParam($x, $xKey), new ComparerParam($y, $yKey));
+                next($second);
+            }
+            $result = $equals;
         }
-        reset($second);
-        $expression = new LinqExpression();
-        $expression->closure = function ($x, $xKey) use (&$second, $comparer) {
-            $y = current($second);
-            $yKey = key($second);
-            $equals = $comparer->equals(new ComparerParam($x, $xKey), new ComparerParam($y, $yKey));
-            next($second);
-            return $equals;
-        };
-        $expression->return = LinqExpression::SEQUENCES;
-        $this->expressions[] = $expression;
-        $array = $this->getResult();
-        if ($this->contains == count($array)) {
-            $result = true;
-            $this->contains = 0;
-        }
+
         return $result;
     }
 
@@ -460,29 +518,41 @@ class LinqLite
 
     // region Aggregation
 
+    /**
+     * Applies an accumulator function over an array.
+     *
+     * @param \Closure $func An accumulator function to be invoked on each element.
+     *
+     * @return mixed|null
+     */
     public function aggregate(\Closure $func)
     {
-        $expression = new LinqExpression();
-        $expression->closure = $func;
-        $expression->return = LinqExpression::AGGREGATION;
-        $this->expressions[] = $expression;
-        $this->getResult();
-        return $this->aggregateResult;
+        $result = null;
+        $array = $this->getResult();
+        if (count($array) > 0) {
+            $accumulate = current($array);
+            while (next($array)) {
+                $accumulate = $func($accumulate, current($array));
+            }
+            $result = $accumulate;
+        }
+
+        return $result;
     }
 
+    /**
+     * Computes the average of an array.
+     *
+     * @return float|null
+     */
     public function average()
     {
         $result = null;
-        $expression = new LinqExpression();
-        $expression->closure = function ($value) {
-            return is_numeric($value);
-        };
-        $expression->return = LinqExpression::FILTERING;
-        $this->expressions[] = $expression;
         $array = $this->getResult();
         if (count($array) > 0) {
             $result = array_sum($array) / count($array);
         }
+
         return $result;
     }
 
@@ -499,7 +569,7 @@ class LinqLite
     }
 
     /**
-     * @deprecated deprecated since version 2.0.0
+     * @deprecated deprecated since version 1.5.0
      *
      * @return array
      */
@@ -522,46 +592,42 @@ class LinqLite
 
     // region Private Methods
 
+    private function getWhere(\Closure $predicate)
+    {
+        $result = [];
+        if (!is_null($predicate)) {
+            foreach ($this->storage as $key => $value) {
+                $predicateResult = $predicate($value, $key);
+                if ($predicateResult) {
+                    $result[$key] = $value;
+                }
+            }
+            $this->storage = $result;
+        }
+    }
+
     private function getResult($isDictionary = false)
     {
         $result = [];
         if (count($this->storage) > 0) {
-            $iterator = new LinqIterator($this->storage, $this->expressions);
-            $value = null;
             if (!is_null($this->isDictionary)) {
                 $isDictionary = $this->isDictionary;
             }
-            while ($iterator->valid()) {
-                $value = $iterator->current();
-                if (!$value->filtered) {
-                    if ($isDictionary) {
-                        if ($value->isGrouping) {
-                            $result[$value->key][] = $value->value;
-                        } else {
-                            $result[$value->key] = $value->value;
-                        }
-                    } else {
-                        if ($value->isJoining) {
-                            $result = array_merge($value->value, $result);
-                        } else {
-                            $result[] = $value->value;
-                        }
-                    }
-                    $this->contains += abs(intval($value->contains));
-                    $this->aggregateResult = $value->aggregate;
-                }
-                $iterator->next();
+            $result = $this->storage;
+            if (!$isDictionary) {
+                $result = array_values($result);
             }
         }
         $this->isDictionary = null;
+
         return $result;
     }
 
     /**
      * Calculate array rank
      *
-     * @param array   $array Source rank.
-     * @param integer $rank  Rank.
+     * @param array $array Source rank.
+     * @param integer $rank Rank.
      *
      * @return float|integer
      */
@@ -576,6 +642,7 @@ class LinqLite
         }
         $count = count($array) > 0 ? count($array) : 1;
         $counter += ($rank / $count);
+
         return $counter;
     }
 
