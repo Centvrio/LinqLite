@@ -56,7 +56,7 @@ class LinqLite
 
     // region Filtering
 
-    public function where(\Closure $predicate)
+    public function where(callable $predicate)
     {
         $this->getWhere($predicate);
 
@@ -516,6 +516,28 @@ class LinqLite
 
     // endregion
 
+    // region Sorting
+
+    public function orderBy(callable $keySelector)
+    {
+        if (!is_null($keySelector)) {
+            $this->doSort($keySelector);
+        }
+
+        return $this;
+    }
+
+    public function orderByDescending(callable $keySelector)
+    {
+        if (!is_null($keySelector)) {
+            $this->doSort($keySelector, true);
+        }
+
+        return $this;
+    }
+
+    // endregion
+
     // region Aggregation
 
     /**
@@ -592,7 +614,7 @@ class LinqLite
 
     // region Private Methods
 
-    private function getWhere(\Closure $predicate)
+    private function getWhere(callable $predicate)
     {
         $result = [];
         if (!is_null($predicate)) {
@@ -603,6 +625,42 @@ class LinqLite
                 }
             }
             $this->storage = $result;
+        }
+    }
+
+    private function doSort(callable $keySelector, $byDescending = false)
+    {
+        $result = [];
+        $sortObjects = [];
+        $items = $this->storage;
+        foreach ($items as $key => $item) {
+            $sortKey = $keySelector($item, $key);
+            $this->validateSortKey($sortKey);
+            $sortObjects[] = [$sortKey, $key];
+        }
+        $count = count($sortObjects);
+        for ($i = 0; $i < $count; $i++) {
+            for ($j = 1; $j < $count; $j++) {
+                $compare = $sortObjects[$j][0] < $sortObjects[$j - 1][0];
+                if ($byDescending) {
+                    $compare = $sortObjects[$j][0] > $sortObjects[$j - 1][0];
+                }
+                if ($compare) {
+                    $tempObj = $sortObjects[$j];
+                    $sortObjects[$j] = $sortObjects[$j - 1];
+                    $sortObjects[$j - 1] = $tempObj;
+                }
+            }
+            $resultKey = $sortObjects[$i][1];
+            $result[$resultKey] = $items[$resultKey];
+        }
+        $this->storage = $result;
+    }
+
+    private function validateSortKey($sortKey)
+    {
+        if (!is_scalar($sortKey)) {
+            throw new InvalidOperationException('Can not be used as the sort key is not a scalar type');
         }
     }
 
