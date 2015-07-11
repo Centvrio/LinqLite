@@ -21,9 +21,14 @@ class LinqLite
 {
     /**
      * @var array
+     * @access protected
      */
     protected $storage = [];
 
+    /**
+     * @var boolean|null
+     * @access protected
+     */
     protected $isDictionary = null;
 
     private function __construct()
@@ -55,14 +60,27 @@ class LinqLite
     }
 
     // region Filtering
-
-    public function where(callable $predicate)
+    /**
+     * Filters a array of values based on a predicate.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @return LinqLite
+     */
+    public function where(\Closure $predicate)
     {
         $this->getWhere($predicate);
 
         return $this;
     }
 
+    /**
+     * Filters the elements of an array on a specified type.
+     *
+     * @param string $type Type string name
+     *
+     * @return LinqLite
+     */
     public function ofType($type)
     {
         $predicate = function ($value) use ($type) {
@@ -80,7 +98,13 @@ class LinqLite
     // endregion
 
     // region Projection
-
+    /**
+     * Projects each element of a array into a new form.
+     *
+     * @param \Closure $selector A transform function to apply to each element.
+     *
+     * @return LinqLite
+     */
     public function select(\Closure $selector)
     {
         if (!is_null($selector)) {
@@ -96,6 +120,17 @@ class LinqLite
 
     // region Joining
 
+    /**
+     * Correlates the elements of two arrays based on matching keys.
+     *
+     * @param array $inner
+     *
+     * @param \Closure $outerKeySelector A function to extract the join key from each element of the source array.
+     * @param \Closure $innerKeySelector A function to extract the join key from each element of the second array.
+     * @param \Closure $resultSelector   A transform function to apply to each element.
+     *
+     * @return array
+     */
     public function join(array $inner, \Closure $outerKeySelector, \Closure $innerKeySelector, \Closure $resultSelector)
     {
         $result = [];
@@ -121,7 +156,13 @@ class LinqLite
     // endregion
 
     // region Grouping
-
+    /**
+     * Creates new array from source array according to a specified key selector function.
+     *
+     * @param \Closure $keySelector A function to extract a key from each element.
+     *
+     * @return array
+     */
     public function toLookup(\Closure $keySelector)
     {
         if (!is_null($keySelector) && count($this->storage) > 0) {
@@ -138,6 +179,15 @@ class LinqLite
         return $this;
     }
 
+    /**
+     * Groups the elements of an array according to a specified key selector function and projects the elements for
+     * each group by using a specified function.
+     *
+     * @param \Closure $keySelector A function to extract the key for each element.
+     * @param \Closure $selector    A transform function to apply to each element.
+     *
+     * @return array
+     */
     public function groupBy(\Closure $keySelector, \Closure $selector)
     {
         if (!is_null($keySelector) && !is_null($selector) && count($this->storage) > 0) {
@@ -154,6 +204,16 @@ class LinqLite
         return $this;
     }
 
+    /**
+     * Correlates the elements of two arrays based on key equality, and groups the results.
+     *
+     * @param array $inner               The sequence to join to the source array.
+     * @param \Closure $outerKeySelector A function to extract the join key from each element of the source array.
+     * @param \Closure $innerKeySelector A function to extract the join key from each element of the second array.
+     * @param \Closure $resultSelector   A transform function to apply to each element.
+     *
+     * @return array
+     */
     public function groupJoin(
         array $inner,
         \Closure $outerKeySelector,
@@ -182,6 +242,17 @@ class LinqLite
         return $this;
     }
 
+    /**
+     * Merges two arrays by using the specified predicate function.
+     *
+     * @param array $second            The second array to merge.
+     * @param \Closure $resultSelector A function that specifies how to merge the elements from the two arrays.
+     *
+     * @throws ArgumentNullException
+     * Second is null.
+     *
+     * @return array
+     */
     public function zip(array $second, \Closure $resultSelector)
     {
         if (is_null($resultSelector)) {
@@ -404,7 +475,7 @@ class LinqLite
      * Determines whether an array contains a specified element by using a specified IComparer.
      *
      * @param ComparerParam|mixed $value The value to locate in the sequence.
-     * @param IComparer $comparer An equality comparer to compare values.
+     * @param IComparer $comparer        An equality comparer to compare values.
      *
      * @return boolean
      */
@@ -486,7 +557,7 @@ class LinqLite
     /**
      * Determines whether two arrays are equal by comparing their elements by using a specified IComparer.
      *
-     * @param array $second An array to compare to the source array.
+     * @param array $second       An array to compare to the source array.
      * @param IComparer $comparer An equality comparer to compare values.
      *
      * @return boolean
@@ -514,11 +585,39 @@ class LinqLite
         return $result;
     }
 
+
+    /**
+     * Returns a number that represents how many elements in the array satisfy a condition.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @return integer
+     */
+    public function count(\Closure $predicate = null)
+    {
+        $array = $this->getResult(true);
+        $result = count($array);
+        if (!is_null($predicate)) {
+            $this->getWhere($predicate);
+            $result = count($this->storage);
+        }
+
+        return $result;
+    }
+
     // endregion
 
     // region Sorting
 
-    public function orderBy(callable $keySelector)
+    /**
+     * Sorts the elements of an array in ascending order.
+     *
+     * @param \Closure $keySelector A function to extract a key from an element.
+     *
+     * @return LinqLite
+     * @experimental
+     */
+    public function orderBy(\Closure $keySelector)
     {
         if (!is_null($keySelector)) {
             $this->doSort($keySelector);
@@ -527,7 +626,15 @@ class LinqLite
         return $this;
     }
 
-    public function orderByDescending(callable $keySelector)
+    /**
+     * Sorts the elements of an array in descending order.
+     *
+     * @param \Closure $keySelector A function to extract a key from an element.
+     *
+     * @return LinqLite
+     * @experimental
+     */
+    public function orderByDescending(\Closure $keySelector)
     {
         if (!is_null($keySelector)) {
             $this->doSort($keySelector, true);
@@ -591,17 +698,7 @@ class LinqLite
     }
 
     /**
-     * @deprecated deprecated since version 1.5.0
-     *
-     * @return array
-     */
-    public function toList()
-    {
-        return $this->getResult(true);
-    }
-
-    /**
-     * @since Version 2.0.0
+     * @since Version 1.4.7
      *
      * @return array
      */
@@ -639,18 +736,24 @@ class LinqLite
             $sortObjects[] = [$sortKey, $key];
         }
         $count = count($sortObjects);
-        for ($i = 0; $i < $count; $i++) {
-            for ($j = 1; $j < $count; $j++) {
-                $compare = $sortObjects[$j][0] < $sortObjects[$j - 1][0];
-                if ($byDescending) {
-                    $compare = $sortObjects[$j][0] > $sortObjects[$j - 1][0];
-                }
-                if ($compare) {
-                    $tempObj = $sortObjects[$j];
+
+        for ($i = 1; $i < $count; $i++) {
+            $key = $sortObjects[$i];
+            $j = $i;
+            if ($byDescending) {
+                while ($j > 0 && $sortObjects[$j - 1][0] < $key[0]) {
                     $sortObjects[$j] = $sortObjects[$j - 1];
-                    $sortObjects[$j - 1] = $tempObj;
+                    $j--;
+                }
+            } else {
+                while ($j > 0 && $sortObjects[$j - 1][0] > $key[0]) {
+                    $sortObjects[$j] = $sortObjects[$j - 1];
+                    $j--;
                 }
             }
+            $sortObjects[$j] = $key;
+        }
+        for ($i = 0; $i < $count; $i++) {
             $resultKey = $sortObjects[$i][1];
             $result[$resultKey] = $items[$resultKey];
         }
@@ -684,7 +787,7 @@ class LinqLite
     /**
      * Calculate array rank
      *
-     * @param array $array Source rank.
+     * @param array $array  Source rank.
      * @param integer $rank Rank.
      *
      * @return float|integer
