@@ -283,7 +283,15 @@ class LinqLite
     // endregion
 
     // region Pagination
-
+    /**
+     * Returns the first element of an array.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @throws InvalidOperationException The source array is empty.
+     *
+     * @return mixed
+     */
     public function first(\Closure $predicate = null)
     {
         $this->getWhere($predicate);
@@ -300,6 +308,14 @@ class LinqLite
         return $result;
     }
 
+    /**
+     * Returns the first element of an array, or a default value if no element is found.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     * @param mixed $defaultValue Default value.
+     *
+     * @return mixed
+     */
     public function firstOrDefault(\Closure $predicate = null, $defaultValue = null)
     {
         $this->getWhere($predicate);
@@ -313,6 +329,15 @@ class LinqLite
         return $result;
     }
 
+    /**
+     * Returns the last element of an array.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @throws InvalidOperationException The source array is empty.
+     *
+     * @return mixed
+     */
     public function last(\Closure $predicate = null)
     {
         $this->getWhere($predicate);
@@ -330,6 +355,14 @@ class LinqLite
         return $result;
     }
 
+    /**
+     * Returns the last element of an array, or a default value if no element is found.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     * @param mixed $defaultValue Default value.
+     *
+     * @return mixed
+     */
     public function lastOrDefault(\Closure $predicate = null, $defaultValue = null)
     {
         $this->getWhere($predicate);
@@ -344,6 +377,16 @@ class LinqLite
         return $result;
     }
 
+    /**
+     * Returns a single, specific element of an array.
+     *
+     * @param \Closure $predicate A function to test each element for a condition.
+     *
+     * @throws InvalidOperationException More than one element satisfies the condition.
+     *                                   The input array contains more than one element.
+     *
+     * @return mixed
+     */
     public function single(\Closure $predicate = null)
     {
         $this->getWhere($predicate);
@@ -366,6 +409,15 @@ class LinqLite
         }
     }
 
+    /**
+     * Returns a single, specific element of an array, or a default value if that element is not found.
+     *
+     * @param \Closure|null $predicate A function to test each element for a condition.
+     * @param mixed $defaultValue      Default value.
+     *
+     * @return mixed
+     * @throws InvalidOperationException
+     */
     public function singleOrDefault(\Closure $predicate = null, $defaultValue = null)
     {
         $this->getWhere($predicate);
@@ -385,6 +437,17 @@ class LinqLite
         }
     }
 
+    /**
+     * Returns the element at a specified index in an array.
+     *
+     * @param integer $index The zero-based index of the element to retrieve.
+     *
+     * @throws IndexOutOfRangeException Index is less than 0 or greater than or equal to the number of elements in
+     *                                  array.
+     * @throws InvalidOperationException The source array is empty.
+     *
+     * @return mixed
+     */
     public function elementAt($index)
     {
         $array = $this->getResult();
@@ -401,6 +464,14 @@ class LinqLite
         return $result;
     }
 
+    /**
+     * Returns the element at a specified index in an array or a default value if the index is out of range.
+     *
+     * @param integer $index      The zero-based index of the element to retrieve.
+     * @param mixed $defaultValue Default value.
+     *
+     * @return mixed
+     */
     public function elementAtOrDefault($index, $defaultValue = null)
     {
         $array = $this->getResult();
@@ -412,6 +483,16 @@ class LinqLite
         return $array[$index];
     }
 
+    /**
+     * Searches for the specified object and returns the key of the first occurrence within the range of elements in
+     * the array that starts at the specified index and contains the specified number of elements.
+     *
+     * @param mixed $value        Value to locate in the array.
+     * @param integer|null $start Starting position of the search.
+     * @param integer|null $count The number of elements within a range in which to search.
+     *
+     * @return int|null|string
+     */
     public function indexOf($value, $start = null, $count = null)
     {
         $result = null;
@@ -438,6 +519,16 @@ class LinqLite
         return $result;
     }
 
+    /**
+     * Searches for the specified object and returns the key of the last occurrence within the range of elements in the
+     * array that starts at the specified index and contains the specified number of elements.
+     *
+     * @param mixed $value        Value to locate in the array.
+     * @param integer|null $start Starting position of the search.
+     * @param integer|null $count The number of elements within a range in which to search.
+     *
+     * @return int|null|string
+     */
     public function lastIndexOf($value, $start = null, $count = null)
     {
         $result = null;
