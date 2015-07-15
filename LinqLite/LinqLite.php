@@ -123,13 +123,13 @@ class LinqLite
     /**
      * Correlates the elements of two arrays based on matching keys.
      *
-     * @param array $inner
+     * @param array    $inner
      *
      * @param \Closure $outerKeySelector A function to extract the join key from each element of the source array.
      * @param \Closure $innerKeySelector A function to extract the join key from each element of the second array.
      * @param \Closure $resultSelector   A transform function to apply to each element.
      *
-     * @return array
+     * @return LinqLite
      */
     public function join(array $inner, \Closure $outerKeySelector, \Closure $innerKeySelector, \Closure $resultSelector)
     {
@@ -161,7 +161,7 @@ class LinqLite
      *
      * @param \Closure $keySelector A function to extract a key from each element.
      *
-     * @return array
+     * @return LinqLite
      */
     public function toLookup(\Closure $keySelector)
     {
@@ -186,7 +186,7 @@ class LinqLite
      * @param \Closure $keySelector A function to extract the key for each element.
      * @param \Closure $selector    A transform function to apply to each element.
      *
-     * @return array
+     * @return LinqLite
      */
     public function groupBy(\Closure $keySelector, \Closure $selector)
     {
@@ -207,12 +207,12 @@ class LinqLite
     /**
      * Correlates the elements of two arrays based on key equality, and groups the results.
      *
-     * @param array $inner               The sequence to join to the source array.
+     * @param array    $inner            The sequence to join to the source array.
      * @param \Closure $outerKeySelector A function to extract the join key from each element of the source array.
      * @param \Closure $innerKeySelector A function to extract the join key from each element of the second array.
      * @param \Closure $resultSelector   A transform function to apply to each element.
      *
-     * @return array
+     * @return LinqLite
      */
     public function groupJoin(
         array $inner,
@@ -245,13 +245,13 @@ class LinqLite
     /**
      * Merges two arrays by using the specified predicate function.
      *
-     * @param array $second            The second array to merge.
+     * @param array    $second         The second array to merge.
      * @param \Closure $resultSelector A function that specifies how to merge the elements from the two arrays.
      *
      * @throws ArgumentNullException
      * Second is null.
      *
-     * @return array
+     * @return LinqLite
      */
     public function zip(array $second, \Closure $resultSelector)
     {
@@ -311,8 +311,8 @@ class LinqLite
     /**
      * Returns the first element of an array, or a default value if no element is found.
      *
-     * @param \Closure $predicate A function to test each element for a condition.
-     * @param mixed $defaultValue Default value.
+     * @param \Closure $predicate    A function to test each element for a condition.
+     * @param mixed    $defaultValue Default value.
      *
      * @return mixed
      */
@@ -358,8 +358,8 @@ class LinqLite
     /**
      * Returns the last element of an array, or a default value if no element is found.
      *
-     * @param \Closure $predicate A function to test each element for a condition.
-     * @param mixed $defaultValue Default value.
+     * @param \Closure $predicate    A function to test each element for a condition.
+     * @param mixed    $defaultValue Default value.
      *
      * @return mixed
      */
@@ -412,11 +412,12 @@ class LinqLite
     /**
      * Returns a single, specific element of an array, or a default value if that element is not found.
      *
-     * @param \Closure|null $predicate A function to test each element for a condition.
-     * @param mixed $defaultValue      Default value.
+     * @param \Closure|null $predicate    A function to test each element for a condition.
+     * @param mixed         $defaultValue Default value.
+     *
+     * @throws InvalidOperationException
      *
      * @return mixed
-     * @throws InvalidOperationException
      */
     public function singleOrDefault(\Closure $predicate = null, $defaultValue = null)
     {
@@ -467,8 +468,8 @@ class LinqLite
     /**
      * Returns the element at a specified index in an array or a default value if the index is out of range.
      *
-     * @param integer $index      The zero-based index of the element to retrieve.
-     * @param mixed $defaultValue Default value.
+     * @param integer $index        The zero-based index of the element to retrieve.
+     * @param mixed   $defaultValue Default value.
      *
      * @return mixed
      */
@@ -487,11 +488,11 @@ class LinqLite
      * Searches for the specified object and returns the key of the first occurrence within the range of elements in
      * the array that starts at the specified index and contains the specified number of elements.
      *
-     * @param mixed $value        Value to locate in the array.
+     * @param mixed        $value Value to locate in the array.
      * @param integer|null $start Starting position of the search.
      * @param integer|null $count The number of elements within a range in which to search.
      *
-     * @return int|null|string
+     * @return integer|null|string
      */
     public function indexOf($value, $start = null, $count = null)
     {
@@ -523,11 +524,11 @@ class LinqLite
      * Searches for the specified object and returns the key of the last occurrence within the range of elements in the
      * array that starts at the specified index and contains the specified number of elements.
      *
-     * @param mixed $value        Value to locate in the array.
+     * @param mixed        $value Value to locate in the array.
      * @param integer|null $start Starting position of the search.
      * @param integer|null $count The number of elements within a range in which to search.
      *
-     * @return int|null|string
+     * @return integer|null|string
      */
     public function lastIndexOf($value, $start = null, $count = null)
     {
@@ -558,6 +559,59 @@ class LinqLite
         return $result;
     }
 
+    /**
+     * Returns a specified number of contiguous elements from the start of an array.
+     *
+     * @param integer $count The number of elements to return.
+     *
+     * @throws ArgumentException The count of element is not numeric.
+     *
+     * @return LinqLite
+     */
+    public function take($count)
+    {
+        $array = $this->getResult(true);
+        if (is_numeric($count)) {
+            $count = intval($count);
+            $arrayCount = count($array);
+            if ($arrayCount < $count) {
+                $count = count($array);
+            }
+            if ($arrayCount > 0) {
+                $this->storage = array_slice($array, 0, $count, true);
+            }
+        } else {
+            throw new ArgumentException('Argument must be numeric.');
+        }
+        return $this;
+    }
+
+    /**
+     * Bypasses a specified number of elements in an array and then returns the remaining elements.
+     *
+     * @param integer $count The number of elements to skip before returning the remaining elements.
+     *
+     * @throws ArgumentException The count of element is not numeric.
+     *
+     * @return LinqLite
+     */
+    public function skip($count)
+    {
+        $array = $this->getResult(true);
+        if (is_numeric($count)) {
+            $count = intval($count);
+            $arrayCount = count($array);
+            if ($arrayCount < $count) {
+                $count = count($array);
+            }
+            if ($arrayCount > 0) {
+                $this->storage = array_slice($array, $count, null, true);
+            }
+        } else {
+            throw new ArgumentException('Argument must be numeric.');
+        }
+        return $this;
+    }
     // endregion
 
     // region Sequences
@@ -565,8 +619,8 @@ class LinqLite
     /**
      * Determines whether an array contains a specified element by using a specified IComparer.
      *
-     * @param ComparerParam|mixed $value The value to locate in the sequence.
-     * @param IComparer $comparer        An equality comparer to compare values.
+     * @param ComparerParam|mixed $value    The value to locate in the sequence.
+     * @param IComparer           $comparer An equality comparer to compare values.
      *
      * @return boolean
      */
@@ -648,7 +702,7 @@ class LinqLite
     /**
      * Determines whether two arrays are equal by comparing their elements by using a specified IComparer.
      *
-     * @param array $second       An array to compare to the source array.
+     * @param array     $second   An array to compare to the source array.
      * @param IComparer $comparer An equality comparer to compare values.
      *
      * @return boolean
@@ -802,7 +856,7 @@ class LinqLite
 
     // region Private Methods
 
-    private function getWhere(callable $predicate)
+    private function getWhere(\Closure $predicate)
     {
         $result = [];
         if (!is_null($predicate)) {
@@ -816,7 +870,7 @@ class LinqLite
         }
     }
 
-    private function doSort(callable $keySelector, $byDescending = false)
+    private function doSort(\Closure $keySelector, $byDescending = false)
     {
         $result = [];
         $sortObjects = [];
@@ -878,8 +932,8 @@ class LinqLite
     /**
      * Calculate array rank
      *
-     * @param array $array  Source rank.
-     * @param integer $rank Rank.
+     * @param array   $array Source rank.
+     * @param integer $rank  Rank.
      *
      * @return float|integer
      */
