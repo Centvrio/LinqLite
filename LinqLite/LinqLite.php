@@ -856,7 +856,7 @@ class LinqLite
 
     // region Private Methods
 
-    private function getWhere(\Closure $predicate)
+    private function getWhere(\Closure $predicate = null)
     {
         $result = [];
         if (!is_null($predicate)) {
