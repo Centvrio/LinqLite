@@ -570,20 +570,7 @@ class LinqLite
      */
     public function take($count)
     {
-        $array = $this->getResult(true);
-        if (is_numeric($count)) {
-            $count = intval($count);
-            $arrayCount = count($array);
-            if ($arrayCount < $count) {
-                $count = count($array);
-            }
-            if ($arrayCount > 0) {
-                $this->storage = array_slice($array, 0, $count, true);
-            }
-        } else {
-            throw new ArgumentException('Argument must be numeric.');
-        }
-        return $this;
+        return $this->getSlice($count);
     }
 
     /**
@@ -597,20 +584,7 @@ class LinqLite
      */
     public function skip($count)
     {
-        $array = $this->getResult(true);
-        if (is_numeric($count)) {
-            $count = intval($count);
-            $arrayCount = count($array);
-            if ($arrayCount < $count) {
-                $count = count($array);
-            }
-            if ($arrayCount > 0) {
-                $this->storage = array_slice($array, $count, null, true);
-            }
-        } else {
-            throw new ArgumentException('Argument must be numeric.');
-        }
-        return $this;
+        return $this->getSlice($count, true);
     }
     // endregion
 
@@ -718,10 +692,10 @@ class LinqLite
             reset($first);
             reset($second);
             $equals = true;
-            foreach ($first as $xKey => $x) {
-                $y = current($second);
+            foreach ($first as $xKey => $xValue) {
+                $yValue = current($second);
                 $yKey = key($second);
-                $equals = $equals && $comparer->equals(new ComparerParam($x, $xKey), new ComparerParam($y, $yKey));
+                $equals = $equals && $comparer->equals(new ComparerParam($xValue, $xKey), new ComparerParam($yValue, $yKey));
                 next($second);
             }
             $result = $equals;
@@ -882,27 +856,49 @@ class LinqLite
         }
         $count = count($sortObjects);
 
-        for ($i = 1; $i < $count; $i++) {
-            $key = $sortObjects[$i];
-            $j = $i;
+        for ($oldIndex = 1; $oldIndex < $count; $oldIndex++) {
+            $key = $sortObjects[$oldIndex];
+            $newIndex = $oldIndex;
             if ($byDescending) {
-                while ($j > 0 && $sortObjects[$j - 1][0] < $key[0]) {
-                    $sortObjects[$j] = $sortObjects[$j - 1];
-                    $j--;
+                while ($newIndex > 0 && $sortObjects[$newIndex - 1][0] < $key[0]) {
+                    $sortObjects[$newIndex] = $sortObjects[$newIndex - 1];
+                    $newIndex--;
                 }
             } else {
-                while ($j > 0 && $sortObjects[$j - 1][0] > $key[0]) {
-                    $sortObjects[$j] = $sortObjects[$j - 1];
-                    $j--;
+                while ($newIndex > 0 && $sortObjects[$newIndex - 1][0] > $key[0]) {
+                    $sortObjects[$newIndex] = $sortObjects[$newIndex - 1];
+                    $newIndex--;
                 }
             }
-            $sortObjects[$j] = $key;
+            $sortObjects[$newIndex] = $key;
         }
-        for ($i = 0; $i < $count; $i++) {
-            $resultKey = $sortObjects[$i][1];
+        for ($index = 0; $index < $count; $index++) {
+            $resultKey = $sortObjects[$index][1];
             $result[$resultKey] = $items[$resultKey];
         }
         $this->storage = $result;
+    }
+
+    private function getSlice($count, $isSkip = false)
+    {
+        $array = $this->getResult(true);
+        if (is_numeric($count)) {
+            $count = intval($count);
+            $arrayCount = count($array);
+            if ($arrayCount < $count) {
+                $count = count($array);
+            }
+            if ($arrayCount > 0) {
+                if ($isSkip) {
+                    $this->storage = array_slice($array, $count, null, true);
+                } else {
+                    $this->storage = array_slice($array, 0, $count, true);
+                }
+            }
+        } else {
+            throw new ArgumentException('Argument must be numeric.');
+        }
+        return $this;
     }
 
     private function validateSortKey($sortKey)
